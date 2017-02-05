@@ -1,3 +1,5 @@
+'use strict';
+
 const debug = require('debug')('asttpl');
 const YError = require('yerror');
 const miniquery = require('miniquery');

@@ -1,3 +1,5 @@
+'use strict';
+
 const assert = require('assert');
 const asttpl = require('.');
 const { builders } = require('ast-types');
