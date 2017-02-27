@@ -24,6 +24,16 @@ const ENCODED_AROBASE = /𐅄/g;
 
 module.exports = compileTpl;
 
+/**
+ * Compile an run a template
+ * @param {Object} context Context (destructured)
+ * @param  {Object} context.transformations     Map for template transformations
+ * @param  {Object} context.filters             Map for filter filters
+ * @param  {Object} context.recastOptions       Recast options object
+ * @param  {String} template            The actual template
+ * @param  {Array<Object>} valuesStack  The values to fill the template
+ * @return {String}                     The templating result
+ */
 function compileTpl({ transformations, filters, recastOptions }, template, valuesStack) {
   const ast = recast.parse(template);
 
