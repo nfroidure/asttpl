@@ -1,3 +1,5 @@
+/* eslint max-len:0 */
+
 'use strict';
 
 const assert = require('assert');
@@ -80,8 +82,9 @@ function buildQueryParameters(path, values) {
 }
 
 const template =
-`import qs from 'qs';
+`import querystring from 'querystring';
 import angular from 'angular';
+
 const HTTP_METHODS = {
   options: 'OPTIONS',
   head: 'HEAD',
@@ -92,7 +95,18 @@ const HTTP_METHODS = {
   delete: 'DELETE'
 };
 
-angular.module('app').service('API', apiService);
+const sortFn = (a, b) => a > b ? 1 : -1;
+const cleanQuery = (query) => {
+  return Object.keys(query)
+    .filter((key) => typeof query[key] !== 'undefined')
+    .filter((key) => (!(query[key] instanceof Array)) || query[key].length !== 0)
+    .reduce((newQuery, key) => {
+      newQuery[key] = query[key];
+      return newQuery;
+    }, {});
+};
+
+angular.module('app').factory('API', apiService);
 
 apiService.$inject = ['ENV', '$http'];
 
@@ -105,33 +119,34 @@ function apiService(ENV, $http) {
 
   function 𐅙repeat𐅙endpoints𐅞𐅅𐅙operationId ({
     𐅙repeat𐅙parameters𐅞𐅅𐅙name
-  }) {
+  }, options = {}) {
     const urlParts = [ENV.apiEndpoint].concat(𐅙transform𐅙buildPath𐅙path);
     const query = 𐅙transform𐅙buildQueryParameters𐅙parameters;
     const headers = {};
     let data = 𐅙transform𐅙buildData𐅙parameters;
     let apiToken = 𐅙transform𐅙takeToken𐅙parameters;
+    let qs = querystring.stringify(cleanQuery(query));
 
-    if(data) {
-      headers['Content-Type'] = 'application/json';
-    }
-
-    if(apiToken) {
+    if (apiToken) {
       headers['Authorization'] = 'Bearer ' + apiToken;
     }
 
-    const req = {
-       method: HTTP_METHODS.𐅙variable𐅙method,
-       url: urlParts.join('') + '?' + qs.stringify(query),
-       headers,
-       data
-     };
-     return $http(req);
+    if (data) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    const req = Object.assign(options, {
+      method: HTTP_METHODS.𐅙variable𐅙method,
+      url: urlParts.join('') + (qs.length ? '?' + qs : ''),
+      headers,
+      data
+    });
+    return $http(req);
   }
 }`;
 
 const expected =
-`import qs from 'qs';
+`import querystring from 'querystring';
 import angular from 'angular';
 
 const HTTP_METHODS = {
@@ -144,7 +159,16 @@ const HTTP_METHODS = {
   delete: 'DELETE'
 };
 
-angular.module('app').service('API', apiService);
+const sortFn = (a, b) => (a > b ? 1 : -1);
+
+const cleanQuery = query => {
+  return Object.keys(query).filter(key => typeof query[key] !== 'undefined').filter(key => !(query[key] instanceof Array) || query[key].length !== 0).reduce((newQuery, key) => {
+    newQuery[key] = query[key];
+    return newQuery;
+  }, {});
+};
+
+angular.module('app').factory('API', apiService);
 apiService.$inject = ['ENV', '$http'];
 
 function apiService(ENV, $http) {
@@ -153,7 +177,7 @@ function apiService(ENV, $http) {
 }`;
 
 const expectedFull =
-`import qs from 'qs';
+`import querystring from 'querystring';
 import angular from 'angular';
 
 const HTTP_METHODS = {
@@ -166,7 +190,16 @@ const HTTP_METHODS = {
   delete: 'DELETE'
 };
 
-angular.module('app').service('API', apiService);
+const sortFn = (a, b) => (a > b ? 1 : -1);
+
+const cleanQuery = query => {
+  return Object.keys(query).filter(key => typeof query[key] !== 'undefined').filter(key => !(query[key] instanceof Array) || query[key].length !== 0).reduce((newQuery, key) => {
+    newQuery[key] = query[key];
+    return newQuery;
+  }, {});
+};
+
+angular.module('app').factory('API', apiService);
 apiService.$inject = ['ENV', '$http'];
 
 function apiService(ENV, $http) {
@@ -186,7 +219,8 @@ function apiService(ENV, $http) {
       offset,
       territory,
       term
-    }
+    },
+    options = {}
   ) {
     const urlParts = [ENV.apiEndpoint].concat(['/search/albums']);
 
@@ -202,21 +236,22 @@ function apiService(ENV, $http) {
     const headers = {};
     let data;
     let apiToken = Authorization;
-
-    if (data) {
-      headers['Content-Type'] = 'application/json';
-    }
+    let qs = querystring.stringify(cleanQuery(query));
 
     if (apiToken) {
       headers['Authorization'] = 'Bearer ' + apiToken;
     }
 
-    const req = {
+    if (data) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    const req = Object.assign(options, {
       method: HTTP_METHODS.get,
-      url: urlParts.join('') + '?' + qs.stringify(query),
+      url: urlParts.join('') + ((qs.length ? '?' + qs : '')),
       headers,
       data
-    };
+    });
 
     return $http(req);
   }
@@ -228,7 +263,8 @@ function apiService(ENV, $http) {
       body,
       Authorization,
       articleId
-    }
+    },
+    options = {}
   ) {
     const urlParts = [ENV.apiEndpoint].concat(['/articles/', articleId, '']);
 
@@ -240,21 +276,22 @@ function apiService(ENV, $http) {
     const headers = {};
     let data = body;
     let apiToken = Authorization;
-
-    if (data) {
-      headers['Content-Type'] = 'application/json';
-    }
+    let qs = querystring.stringify(cleanQuery(query));
 
     if (apiToken) {
       headers['Authorization'] = 'Bearer ' + apiToken;
     }
 
-    const req = {
+    if (data) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    const req = Object.assign(options, {
       method: HTTP_METHODS.get,
-      url: urlParts.join('') + '?' + qs.stringify(query),
+      url: urlParts.join('') + ((qs.length ? '?' + qs : '')),
       headers,
       data
-    };
+    });
 
     return $http(req);
   }
