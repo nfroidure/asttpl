@@ -54,12 +54,14 @@
     "yerror": "^1.0.2"
   },
   "devDependencies": {
+    "camel-case": "^3.0.0",
     "commitizen": "^2.9.6",
     "conventional-changelog-cli": "^1.2.0",
     "coveralls": "2.11.15",
     "cz-conventional-changelog": "^2.0.0",
     "eslint": "3.16.0",
     "eslint-config-simplifield": "4.1.1",
+    "header-case": "^1.0.1",
     "istanbul": "0.4.5",
     "jsdoc-to-markdown": "^3.0.0",
     "metapak": "0.0.18",

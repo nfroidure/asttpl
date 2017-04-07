@@ -3,14 +3,25 @@
 'use strict';
 
 const assert = require('assert');
+const camelCase = require('camel-case');
+const headerCase = require('header-case');
 const asttpl = require('.');
 const { builders } = require('ast-types');
 
 const transformations = {
   buildPath,
   buildData,
-  takeToken,
   buildQueryParameters,
+  buildHeadersParameters,
+  isDirectFileUpload,
+};
+
+const filters = {
+  inHeaders:
+    a =>
+      a.filter(p => 'header' === p.in)
+      .map((p) => { p.name = camelCase(p.name); return p; }),
+  notInHeaders: a => a.filter(p => 'header' !== p.in),
 };
 
 function buildPath(path, values) {
@@ -43,18 +54,23 @@ function buildData(path, values) {
   return false; // eslint-disable-line
 }
 
-function takeToken(path, values) {
+function isDirectFileUpload(path, values) {
   const node = path.node;
-  const apiToken = (values[values.length - 1] || [])
-  .filter(parameter => 'header' === parameter.in)
-  .find(parameter => 'Authorization' === parameter.name);
+  const body = (values[values.length - 1] || [])
+  .find(parameter => 'body' === parameter.in);
 
-  if(apiToken) {
-    node.name = apiToken.name;
+  // Trick to mock direct file upload since Swagger spec
+  // has no way to describe it currently
+  if(
+    body.schema &&
+    'string' === body.schema.type &&
+    'binary' === body.schema.format
+  ) {
+    node.name = body.name;
+    path.replace(builders.literal(true));
     return;
   }
-  path.prune();
-  return false; // eslint-disable-line
+  path.replace(builders.literal(false));
 }
 
 function buildQueryParameters(path, values) {
@@ -77,6 +93,30 @@ function buildQueryParameters(path, values) {
       kind: 'init',
       method: false,
       shorthand: true,
+    })),
+  });
+}
+
+function buildHeadersParameters(path, values) {
+  path.replace({
+    type: 'ObjectExpression',
+    properties: values[values.length - 1]
+    .filter(param => 'header' === param.in)
+    .map(param => ({
+      type: 'Property',
+      key: {
+        type: 'Identifier',
+        name: headerCase(param.name),
+      },
+      computed: false,
+      value: {
+        type: 'Identifier',
+        name: camelCase(param.name),
+        loc: null,
+      },
+      kind: 'init',
+      method: false,
+      shorthand: false,
     })),
   });
 }
@@ -118,20 +158,17 @@ function apiService(ENV, $http) {
   return API;
 
   function 𐅙repeat𐅙endpoints𐅞𐅅𐅙operationId ({
-    𐅙repeat𐅙parameters𐅞𐅅𐅙name
+    𐅙repeat𐅙parameters𐅞𐅅𐅂inHeaders𐅙name,
+    𐅙repeat𐅙parameters𐅞𐅅𐅂notInHeaders𐅙name
   }, options = {}) {
     const urlParts = [ENV.apiEndpoint].concat(𐅙transform𐅙buildPath𐅙path);
     const query = 𐅙transform𐅙buildQueryParameters𐅙parameters;
-    const headers = {};
+    const headers = 𐅙transform𐅙buildHeadersParameters𐅙parameters;
+
     let data = 𐅙transform𐅙buildData𐅙parameters;
-    let apiToken = 𐅙transform𐅙takeToken𐅙parameters;
     let qs = querystring.stringify(cleanQuery(query));
 
-    if (apiToken) {
-      headers['Authorization'] = 'Bearer ' + apiToken;
-    }
-
-    if (data) {
+    if ((typeof contentType === 'undefined' || !contentType) && data) {
       headers['Content-Type'] = 'application/json';
     }
 
@@ -141,6 +178,11 @@ function apiService(ENV, $http) {
       headers,
       data
     });
+
+    if (data instanceof Blob) {
+      req.transformRequest = [];
+    }
+
     return $http(req);
   }
 }`;
@@ -212,9 +254,9 @@ function apiService(ENV, $http) {
 
   function getAlbums(
     {
+      authorization,
       token,
       access_token,
-      Authorization,
       limit,
       offset,
       territory,
@@ -233,16 +275,14 @@ function apiService(ENV, $http) {
       term
     };
 
-    const headers = {};
+    const headers = {
+      Authorization: authorization
+    };
+
     let data;
-    let apiToken = Authorization;
     let qs = querystring.stringify(cleanQuery(query));
 
-    if (apiToken) {
-      headers['Authorization'] = 'Bearer ' + apiToken;
-    }
-
-    if (data) {
+    if ((typeof contentType === 'undefined' || !contentType) && data) {
       headers['Content-Type'] = 'application/json';
     }
 
@@ -253,15 +293,19 @@ function apiService(ENV, $http) {
       data
     });
 
+    if (data instanceof Blob) {
+      req.transformRequest = [];
+    }
+
     return $http(req);
   }
 
   function putArticle(
     {
+      authorization,
       token,
       access_token,
       body,
-      Authorization,
       articleId
     },
     options = {}
@@ -273,16 +317,14 @@ function apiService(ENV, $http) {
       access_token
     };
 
-    const headers = {};
+    const headers = {
+      Authorization: authorization
+    };
+
     let data = body;
-    let apiToken = Authorization;
     let qs = querystring.stringify(cleanQuery(query));
 
-    if (apiToken) {
-      headers['Authorization'] = 'Bearer ' + apiToken;
-    }
-
-    if (data) {
+    if ((typeof contentType === 'undefined' || !contentType) && data) {
       headers['Content-Type'] = 'application/json';
     }
 
@@ -293,6 +335,10 @@ function apiService(ENV, $http) {
       data
     });
 
+    if (data instanceof Blob) {
+      req.transformRequest = [];
+    }
+
     return $http(req);
   }
 }`;
@@ -300,7 +346,7 @@ function apiService(ENV, $http) {
 describe('astpl', () => {
   it('with a real template but no values', () => {
     assert.equal(
-      asttpl({ transformations }, template, []),
+      asttpl({ transformations, filters }, template, []),
       expected
     );
   });
@@ -413,7 +459,7 @@ describe('astpl', () => {
       ],
     }];
     assert.equal(
-      asttpl({ transformations }, template, [{ endpoints }]),
+      asttpl({ transformations, filters }, template, [{ endpoints }]),
       expectedFull
     );
   });
